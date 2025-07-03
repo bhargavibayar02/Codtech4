@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigiDiary-Your Decentralized Daily log</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Georgia', serif;
+            background: url('https://images.unsplash.com/photo-1496811246310-e1bb0e973364') no-repeat center center fixed; 
+            background-size: cover;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.8); /* semi-transparent background */
+            color: #6A4E23; /* Warm brown color */
+            padding: 20px 0;
+            text-align: center;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 3em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #6A4E23; /* Warm brown color */
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        /* Page Container */
+        .container {
+            padding-top: 120px;
+            padding: 20px;
+            width: 80%;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.9); /* Light semi-transparent white background */
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: slideIn 1s ease-out;
+            backdrop-filter: blur(10px); /* Apply a blur effect to the background */
+        }
+
+        /* Textarea and Button */
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            background-color: #f7f1e1; /* Light cream color */
+        }
+
+        textarea:focus {
+            border-color: #6A4E23;
+            box-shadow: 0 0 10px rgba(106, 78, 35, 0.5);
+            outline: none;
+        }
+
+        button {
+            background-color: #6A4E23; /* Warm brown color */
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #9f7c56; /* Lighter brown shade on hover */
+            transform: translateY(-5px);
+        }
+
+        button:active {
+            transform: translateY(2px);
+        }
+
+        /* Entries List */
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            background-color: #f9f9f9;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            background: #fef0d0; /* Soft yellowish background */
+        }
+
+        li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .timestamp {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Loader */
+        .loader {
+            display: none;
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #6A4E23;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DigiDiary</h1>
+    </header>
+
+    <div class="container">
+        <h3>Add New Entry</h3>
+        <textarea id="entryContent" placeholder="Write your daily logs here..."></textarea><br>
+        <button onclick="addEntry()">Add Entry</button>
+
+        <div class="loader" id="loader"></div>
+
+        <h3>Your Diary Entries</h3>
+        <ul id="entriesList"></ul>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script>
+        let web3;
+        let diaryContract;
+        let account;
+        const contractABI = [
+            {
+                "constant": true,
+                "inputs": [],
+                "name": "getEntries",
+                "outputs": [
+                    {
+                        "components": [
+                            { "name": "id", "type": "uint256" },
+                            { "name": "content", "type": "string" },
+                            { "name": "timestamp", "type": "uint256" }
+                        ],
+                        "name": "",
+                        "type": "tuple[]"
+                    }
+                ],
+                "payable": false,
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "constant": false,
+                "inputs": [{ "name": "_content", "type": "string" }],
+                "name": "addEntry",
+                "outputs": [],
+                "payable": false,
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+        const contractAddress = "0x1302E21f1608554551C70538C3893fCc76F18f0c"; // Replace with your contract address
+
+        window.addEventListener('load', async () => {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.enable(); // Request account access
+                    const accounts = await web3.eth.getAccounts();
+                    account = accounts[0];
+                    diaryContract = new web3.eth.Contract(contractABI, contractAddress);
+                    fetchEntries(); // Fetch diary entries on load
+                } catch (error) {
+                    console.error("User denied account access");
+                }
+            } else {
+                alert("Please install MetaMask to use this application.");
+            }
+        });
+
+        // Add new diary entry
+        async function addEntry() {
+            const entryContent = document.getElementById('entryContent').value;
+
+            if (entryContent === "") {
+                alert("Diary entry cannot be empty!");
+                return;
+            }
+
+            document.getElementById('loader').classList.add('show');
+
+            try {
+                await diaryContract.methods.addEntry(entryContent).send({ from: account });
+                alert("Entry Added!");
+                fetchEntries();
+            } catch (error) {
+                console.error(error);
+                alert("Error adding entry.");
+            } finally {
+                document.getElementById('loader').classList.remove('show');
+            }
+        }
+
+        // Fetch and display all diary entries
+        async function fetchEntries() {
+            const entries = await diaryContract.methods.getEntries().call();
+            const entriesList = document.getElementById('entriesList');
+            entriesList.innerHTML = '';
+
+            entries.forEach(entry => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <strong>ID:</strong> ${entry.id} <br>
+                    <strong>Content:</strong> ${entry.content} <br>
+                    <span class="timestamp">Timestamp: ${new Date(entry.timestamp * 1000).toLocaleString()}</span>
+                `;
+                entriesList.appendChild(listItem);
+            });
+        }
+    </script>
+</body>
+</html>
